@@ -14,6 +14,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Text.RegularExpressions;
+using System.Net.Http;
+using Newtonsoft.Json;
 
 namespace Currency_Converter
 {
@@ -22,13 +24,48 @@ namespace Currency_Converter
     /// </summary>
     public partial class MainWindow : Window
     {
+        Root val = new Root();
+
         public MainWindow()
         {
             InitializeComponent();
             ClearControls();
-            BindCurrency();
-            
+            GetValue();
+         
         }
+        
+        public static async Task<Root> GetData<T>(string url)
+        {
+            var myRoot = new Root(); 
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    client.Timeout = TimeSpan.FromMinutes(1);
+                    HttpResponseMessage response = await client.GetAsync(url);
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        var ResponceString = await response.Content.ReadAsStringAsync();
+                        var ResponceObject = JsonConvert.DeserializeObject<Root>(ResponceString);
+
+                        return ResponceObject;
+                    }
+                    return myRoot;
+                }
+            }
+            catch
+            {
+                return myRoot;
+            }
+        }
+
+        private async void GetValue()
+        {
+            val = await GetData<Root>("https://openexchangerates.org/api/latest.json?app_id=a54299b3ed474e66a8b5a8937b5c387d");
+            BindCurrency();
+        }
+
+
 
         private void BindCurrency()
         {
@@ -42,12 +79,16 @@ namespace Currency_Converter
 
             //Add rows in DataTable with text and value
             dtCurrency.Rows.Add("--SELECT--", 0);
-            dtCurrency.Rows.Add("INR", 1);
-            dtCurrency.Rows.Add("USD", 75);
-            dtCurrency.Rows.Add("EUR", 85);
-            dtCurrency.Rows.Add("SAR", 20);
-            dtCurrency.Rows.Add("PUOND", 5);
-            dtCurrency.Rows.Add("DEM", 43);
+            dtCurrency.Rows.Add("INR", val.rates.INR);
+            dtCurrency.Rows.Add("USD", val.rates.USD);
+            dtCurrency.Rows.Add("NZD", val.rates.NZD);
+            dtCurrency.Rows.Add("JPY", val.rates.JPY);
+            dtCurrency.Rows.Add("EUR", val.rates.EUR);
+            dtCurrency.Rows.Add("CAD", val.rates.CAD);
+            dtCurrency.Rows.Add("ISK", val.rates.ISK);
+            dtCurrency.Rows.Add("PHP", val.rates.PHP);
+            dtCurrency.Rows.Add("DKK", val.rates.DKK);
+            dtCurrency.Rows.Add("CZK", val.rates.CZK);
 
             //the data to curency combobox is assigned from datatable
             cmbFromCurrency.ItemsSource = dtCurrency.DefaultView;
@@ -106,7 +147,7 @@ namespace Currency_Converter
                 return;
             }
 
-            //taka care of the math
+            //take care of the math
             if (cmbFromCurrency.Text == cmbToCurrency.Text)
             {
                 ConvertedValue = double.Parse(txtCurrency.Text);
@@ -114,7 +155,7 @@ namespace Currency_Converter
             }
             else
             {
-                ConvertedValue = (double.Parse(cmbFromCurrency.SelectedValue.ToString())) * double.Parse(txtCurrency.Text) / double.Parse(cmbToCurrency.SelectedValue.ToString()); 
+                ConvertedValue = (double.Parse(cmbToCurrency.SelectedValue.ToString())) * double.Parse(txtCurrency.Text) / double.Parse(cmbFromCurrency.SelectedValue.ToString()); 
                 lblCurrency.Content = cmbToCurrency.Text + " " + ConvertedValue.ToString("N3");
             }
         }
